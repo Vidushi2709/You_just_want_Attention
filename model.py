@@ -12,10 +12,9 @@ class input_embeddings(nn.Module):
     def forward(self, x):
         return self.embedding(x)* math.sqrt(self.d_model)
 
-
 class PositionalEncoding(nn.Module):
     def __init__(self, d_model:int, seq_len: int, dropout:float)-> None:
-        super().__int__()
+        super().__init__()
         self.d_model= d_model
         self.seq_len = seq_len
         self.dropout= dropout
@@ -33,7 +32,7 @@ class PositionalEncoding(nn.Module):
         self.register_buffer('pe', pe) # Store in model (non-learnable), persistent buffer
     
     def forward(self, x):
-        x=x+ (self.pe[:,:x.size(1),:]).requires_grad=False()
+        x = x + self.pe[:, :x.size(1), :].detach()
         return self.dropout(x)
     
 class LayerNormalization(nn.Module):
@@ -41,7 +40,7 @@ class LayerNormalization(nn.Module):
         super().__init__()
         self.eps=eps
         self.alpha= nn.Parameter(torch.ones(1)) #multiplicative
-        self.beta= nn.Parameter(torch.zeroes(1)) #additive-> bias
+        self.beta = nn.Parameter(torch.zeros(1))  #additive-> bias
     
     def forward(self, x):
         mean= x.mean(dim=-1, keepdim=True)
@@ -69,7 +68,7 @@ class FeedForward(nn.Module):
 #with full dimensionaltiy
 
 class ResidualConnection(nn.Module):
-    def __int__(self, features: int, dropout:float)->None:
+    def __init__(self, features: int, dropout:float)->None:
         super().__init__()
         self.dropout= dropout
         self.norm= LayerNormalization(features)
@@ -78,7 +77,7 @@ class ResidualConnection(nn.Module):
         return x + self.dropout(sublayer(self.norm(x)))
 
 class Multiheadattention(nn.Module):
-    def __inti__(self, h, d_model, dropout=float)->None:
+    def __init__(self, h, d_model, dropout=float)->None:
         super().__init__()
         self.d_model= d_model
         self.h=h
@@ -96,7 +95,7 @@ class Multiheadattention(nn.Module):
         d_k= query.shape[-1]
         attention_scores= (query @ key.transpose(-2,-1))/math.sqrt(d_k)
         if mask is None:
-            attention_scores.masked_fill(mask==0, -1e9) # write a very low value where mask ==0
+            attention_scores=attention_scores.masked_fill(mask==0, -1e9) # write a very low value where mask ==0
         attention_scores= attention_scores.softmax(dim=-1) #applied softmax
         if dropout is not None:
             attention_scores= dropout(attention_scores)
@@ -120,8 +119,7 @@ class Multiheadattention(nn.Module):
         #concatenate all the heads
         #(batch, h, seq_len, d_k) --> (batch, seq_len, h, d_k) --> (batch, seq_len, d_model) 
         # tranpose(1,2)-> swaps 1 dim with another
-        x= x.transpose(1,2).contiguos().view(x.shape[0], -1, self.h*self.d_k)
-
+        x= x.transpose(1,2).contiguous().view(x.shape[0], -1, self.h*self.d_k)
 
         return self.w_o(x)
         
@@ -183,7 +181,7 @@ class ProjectionLayer(nn.Module):
     def __init__(self, d_model, vocab)->None:
         super().__init__()
         self.proj= nn.Linear(d_model, vocab)
-    def forward(self, x)-> None:
+    def forward(self, x):
         return self.proj(x)
 
 class Transformer(nn.Module):
@@ -206,7 +204,7 @@ class Transformer(nn.Module):
     def decode(self, encoder_op: torch.Tensor, src_mask: torch.Tensor, tgt: torch.Tensor, tgt_mask= torch.Tensor):
         tgt= self.tgt_embeds(tgt)
         tgt= self.tgt_pos(tgt)
-        return self.decode(tgt, encoder_op, src_mask, tgt_mask)
+        return self.decoder(tgt, encoder_op, src_mask, tgt_mask)
 
     def project(self, x):
         return self.project_layer(x)

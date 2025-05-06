@@ -22,11 +22,6 @@ class BilingualDataset(Dataset):
     def __len__(self):
         return len(self.ds)
 
-    @staticmethod
-    def causal_mask(size):
-        mask = torch.triu(torch.ones((1, size, size)), diagonal=1).type(torch.int)
-        return mask == 0
-
     def __getitem__(self, idx):
         #extract raw data
         src_target_pair = self.ds[idx]
@@ -90,6 +85,8 @@ class BilingualDataset(Dataset):
             "tgt_text": tgt_txt,
         }
    
-
+def casual_mask(size):
+        mask = torch.triu(torch.ones((1, size, size)), diagonal=1).type(torch.int)
+        return mask == 0
 
         
