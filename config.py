@@ -7,6 +7,7 @@ def get_config():  # Defines all key settings and training parameters
         "lr": 10**-4,  # Learning rate
         "seq_len": 350,  # Maximum sequence length (in tokens)
         "d_model": 512,  # Embedding/hidden size in Transformer layers
+        "nums_head":8,
         "datasource": "wmt14",  # Dataset name used for language translation
         "lang_src": "cs",  # Source language (Czech)
         "lang_tgt": "en",  # Target language (English)
