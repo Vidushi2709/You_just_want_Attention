@@ -77,18 +77,18 @@ class ResidualConnection(nn.Module):
         return x + self.dropout(sublayer(self.norm(x)))
 
 class Multiheadattention(nn.Module):
-    def __init__(self, h, d_model, dropout=0.1)->None:
+    def __init__(self, d_model:int , h:int , dropout=0.1)->None:
         super().__init__()
         self.d_model= d_model
         self.h=h
         print(f"Initializing Multihead Attention with d_model={d_model}, h={h}")  
         assert d_model % h == 0, f"d_model ({d_model}) is not divisible by h ({h})"
         self.d_k= d_model//h
-        self.w_q= nn.Linear(d_model, d_model)
-        self.w_k= nn.Linear(d_model, d_model)
-        self.w_v= nn.Linear(d_model, d_model)
+        self.w_q= nn.Linear(d_model, d_model, bias=False)
+        self.w_k= nn.Linear(d_model, d_model, bias= False)
+        self.w_v= nn.Linear(d_model, d_model, bias=False)
 
-        self.w_o= nn.Linear(d_model, d_model)
+        self.w_o= nn.Linear(d_model, d_model, bias=False)
         self.dropout= nn.Dropout(dropout)
 
     @staticmethod
@@ -234,10 +234,10 @@ def build_a_transformer(src_vocab_size: int, tgt_vocab_size: int, src_len: int, 
     #decoder blocks
     decoder_blocks=[]
     for _ in range(N):
-        encoder_self_attention_block= Multiheadattention(d_model, h, dropout)
+        decoder_self_attention_block= Multiheadattention( d_model, h, dropout)
         decoder_cross_attention_block= Multiheadattention(d_model, h, dropout)
         FeedForward_block= FeedForward(d_model, d_ff, dropout)
-        decoding= Decoderblock(d_model, encoder_self_attention_block, FeedForward_block, dropout)
+        decoding= Decoderblock(d_model, decoder_self_attention_block, decoder_cross_attention_block, FeedForward_block, dropout)
         decoder_blocks.append(decoding)
 
     #encoder && decoder
