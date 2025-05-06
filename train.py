@@ -4,7 +4,7 @@ from tokenizers import Tokenizer
 from tokenizers.models import WordLevel
 from tokenizers.trainers import WordLevelTrainer
 from tokenizers.pre_tokenizers import Whitespace
-from dataset import BilingualDataset, casual_mask
+from dataset import BilingualDataset, causal_mask
 from model import build_a_transformer
 from config import get_config, get_weights_file_path, latest_weights_file_path
 from tqdm import tqdm #shows the live progress bar
@@ -46,7 +46,7 @@ def greedy_decode(model, source, source_mask, tokenizer_src, tokenizer_tgt, max_
             break
 
         #casual mask for decoder
-        decoder_mask = casual_mask(decoder_input.size(1)).type_as(source_mask).to(device)
+        decoder_mask = causal_mask(decoder_input.size(1)).type_as(source_mask).to(device)
 
         #decode next token
         out = model.decode(encoder_output, source_mask, decoder_input, decoder_mask)

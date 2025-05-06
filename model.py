@@ -17,7 +17,7 @@ class PositionalEncoding(nn.Module):
         super().__init__()
         self.d_model= d_model
         self.seq_len = seq_len
-        self.dropout= dropout
+        self.dropout= nn.Dropout(dropout)
 
         #create a matrix of (seq_len, d_model)
         pe= torch.zeros(seq_len, d_model)
@@ -32,7 +32,7 @@ class PositionalEncoding(nn.Module):
         self.register_buffer('pe', pe) # Store in model (non-learnable), persistent buffer
     
     def forward(self, x):
-        x = x + self.pe[:, :x.size(1), :].detach()
+        x = x + self.pe[:, :x.size(1), :].requires_grad_(False) 
         return self.dropout(x)
     
 class LayerNormalization(nn.Module):
@@ -70,14 +70,14 @@ class FeedForward(nn.Module):
 class ResidualConnection(nn.Module):
     def __init__(self, features: int, dropout:float)->None:
         super().__init__()
-        self.dropout= dropout
+        self.dropout= nn.Dropout(dropout)
         self.norm= LayerNormalization(features)
 
     def forward(self, x, sublayer): #sublayer -> prev layer
         return x + self.dropout(sublayer(self.norm(x)))
 
 class Multiheadattention(nn.Module):
-    def __init__(self, d_model:int , h:int , dropout=0.1)->None:
+    def __init__(self, d_model:int , h:int , dropout=float)->None:
         super().__init__()
         self.d_model= d_model
         self.h=h
