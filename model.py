@@ -77,11 +77,12 @@ class ResidualConnection(nn.Module):
         return x + self.dropout(sublayer(self.norm(x)))
 
 class Multiheadattention(nn.Module):
-    def __init__(self, h, d_model, dropout=float)->None:
+    def __init__(self, h, d_model, dropout=0.1)->None:
         super().__init__()
         self.d_model= d_model
         self.h=h
-        assert d_model %h ==0 #assert -> assume it is true always "d model is not divisible by h"
+        print(f"Initializing Multihead Attention with d_model={d_model}, h={h}")  
+        assert d_model % h == 0, f"d_model ({d_model}) is not divisible by h ({h})"
         self.d_k= d_model//h
         self.w_q= nn.Linear(d_model, d_model)
         self.w_k= nn.Linear(d_model, d_model)
@@ -94,12 +95,13 @@ class Multiheadattention(nn.Module):
     def attention(query, key, value, mask, dropout: nn.Dropout):
         d_k= query.shape[-1]
         attention_scores= (query @ key.transpose(-2,-1))/math.sqrt(d_k)
-        if mask is None:
-            attention_scores=attention_scores.masked_fill(mask==0, -1e9) # write a very low value where mask ==0
+        if mask is not None:
+            attention_scores = attention_scores.masked_fill(mask == 0, -1e9) # write a very low value where mask ==0
         attention_scores= attention_scores.softmax(dim=-1) #applied softmax
         if dropout is not None:
             attention_scores= dropout(attention_scores)
-            return (attention_scores @ value), attention_scores
+        
+        return (attention_scores @ value), attention_scores
 
 
     def forward(self,q, k,v, mask): #mask hide stuff
@@ -146,7 +148,7 @@ class Encoder(nn.Module):
     def forward(self, x, mask):
         for layer in self.layers:
             x= layer(x, mask)
-            return self.norm(x);
+        return self.norm(x);
 
 class Decoderblock(nn.Module):
     def __init__(self, features: int, self_attention_block: Multiheadattention, cross_attention_block: Multiheadattention, feed_forward_block: FeedForward, dropout: float)->None:
@@ -246,7 +248,15 @@ def build_a_transformer(src_vocab_size: int, tgt_vocab_size: int, src_len: int, 
     project_la= ProjectionLayer(d_model, tgt_vocab_size)
 
     #final transformer
-    transformer= Transformer(encoder, decoder, src_embeds, tgt_embeds, src_pos, tgt_pos, project_la)
+    transformer = Transformer(
+        encoder=encoder,
+        decoder=decoder,
+        src_embeds=src_embeds,
+        tgt_embded=tgt_embeds,
+        src_pos=src_pos,
+        tgt_pos=tgt_pos,
+        project_layer=project_la
+    )
 
     for p in transformer.parameters(): # loops thr all model's parameters and applies xavier uniform inilialization to all weight matrics (i.e. tensors with dim()>1)
         if p.dim()>1:

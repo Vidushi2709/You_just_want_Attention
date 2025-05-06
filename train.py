@@ -164,7 +164,7 @@ def get_ds(config):
     return train_dataloader, val_dataloader, tokenizer_src, tokenizer_tgt
 
 def get_model(config, vocab_src_len, vocab_tgt_len):
-    model= build_a_transformer(vocab_src_len, vocab_tgt_len, config["seq_len"], config["seq_len"], d_model= config['d_model'], h = config["num_heads"])
+    model= build_a_transformer(vocab_src_len, vocab_tgt_len, config["seq_len"], config["seq_len"], d_model= config['d_model'], h = config.get('h',8))
     return model
 #config["seq_len"]: Maximum seque  nce length for both source and target sentences.
 #d_model: Dimensionality of token embeddings and internal Transformer layers.
@@ -211,42 +211,43 @@ def train_the_damn_model(config):
     #send ip to model
     #runs ecnoder->decoder->final projection layer
     #comapres preds with ground truth using loss loss
-    for batch in batch_iterator:
-        encoder_input = batch['encoder_input'].to(device)
-        decoder_input = batch['decoder_input'].to(device)
-        encoder_mask = batch['encoder_mask'].to(device)
-        decoder_mask = batch['decoder_mask'].to(device)
+        for batch in batch_iterator:
+            encoder_input = batch['encoder_input'].to(device)
+            decoder_input = batch['decoder_input'].to(device)
+            encoder_mask = batch['encoder_mask'].to(device)
+            decoder_mask = batch['decoder_mask'].to(device)
 
-        encoder_output = model.encode(encoder_input, encoder_mask)
-        decoder_output = model.decode(encoder_output, encoder_mask, decoder_input, decoder_mask)
-        proj_output = model.project(decoder_output)
+            encoder_output = model.encode(encoder_input, encoder_mask)
+            decoder_output = model.decode(encoder_output, encoder_mask, decoder_input, decoder_mask)
+            proj_output = model.project(decoder_output)
 
-        label = batch['label'].to(device)
+            label = batch['label'].to(device)
 
-        loss = loss_fn(proj_output.view(-1, tokenizer_tgt.get_vocab_size()), label.view(-1))
-        batch_iterator.set_postfix({"loss": f"{loss.item():6.3f}"})
-    
-        #logging-> backpropogation->weight update
-        writer.add_scalar('train_loss', loss.item(), global_step)
-        writer.flush()
-        loss.backward()
-        optimizer.step()
-        optimizer.zero_grad(set_to_none=True)
-        global_step+=1
+            loss = loss_fn(proj_output.view(-1, tokenizer_tgt.get_vocab_size()), label.view(-1))
+            batch_iterator.set_postfix({"loss": f"{loss.item():6.3f}"})
+        
+            #logging-> backpropogation->weight update
+            writer.add_scalar('train_loss', loss.item(), global_step)
+            writer.flush()
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad(set_to_none=True)
+            global_step+=1
 
-    #validation at end of epochsss
-    run_validation(model, val_dataloader, tokenizer_src, tokenizer_tgt, config['seq_len'], device, lambda msg: batch_iterator.write(msg), global_step, writer)
+        #validation at end of epochsss
+        run_validation(model, val_dataloader, tokenizer_src, tokenizer_tgt, config['seq_len'], device, lambda msg: batch_iterator.write(msg), global_step, writer)
 
-    #save the mdoel at end of every epoch
-    model_filename = get_weights_file_path(config, f"{epoch:02d}")
-    torch.save({
-            'epoch': epoch,
-            'model_state_dict': model.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict(),
-            'global_step': global_step
-        }, model_filename)
+        #save the mdoel at end of every epoch
+        model_filename = get_weights_file_path(config, f"{epoch:02d}")
+        torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'global_step': global_step
+            }, model_filename)
 
 if __name__ == '__main__':
     warnings.filterwarnings("ignore")
     config = get_config()
     train_the_damn_model(config)
+
